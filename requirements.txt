@@ -8,3 +8,7 @@ pillow==10.4.0
 # If you need image-based prediction, add a TF-compatible wheel for the
 # platform or use a separate inference service. To enable TF locally,
 # install a compatible TensorFlow version in your environment.
+streamlit==1.37.1
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.5.1
