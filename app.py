@@ -3,7 +3,12 @@ from pathlib import Path
 import streamlit as st
 import numpy as np
 import pandas as pd
-import joblib
+try:
+    import joblib
+    JOBLIB_AVAILABLE = True
+except Exception:
+    joblib = None
+    JOBLIB_AVAILABLE = False
 from PIL import Image
 
 st.set_page_config(page_title="AI Konsentrasi & Engagement", layout="wide")
@@ -54,8 +59,16 @@ def rekomendasi(conc_score, eng_score):
 def load_engagement_model():
     path = MODELS_DIR / 'engagement_model.joblib'
     if not path.exists():
-        raise FileNotFoundError(f'Model engagement tidak ditemukan: {path}')
-    return joblib.load(path)
+        st.error(f'Model engagement tidak ditemukan: {path}')
+        return None
+    if not JOBLIB_AVAILABLE:
+        st.error("Modul `joblib` tidak terpasang di environment. Tab Engagement dinonaktifkan.")
+        return None
+    try:
+        return joblib.load(path)
+    except Exception as e:
+        st.error(f"Gagal memuat model engagement: {e}")
+        return None
 
 @st.cache_resource
 def load_concentration_model():
