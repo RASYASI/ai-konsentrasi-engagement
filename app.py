@@ -145,14 +145,12 @@ with tab2:
         x = np.array(img.resize(IMG_SIZE)) / 255.0
         x = np.expand_dims(x, axis=0)
 
-        global IMG_MODEL
-        if IMG_MODEL is None:
-            IMG_MODEL = load_concentration_model()
+        model = load_concentration_model()
 
-        if IMG_MODEL is None:
+        if model is None:
             st.warning("Model konsentrasi tidak tersedia. Pastikan TensorFlow terpasang dan model ada di folder 'models'.")
         else:
-            prob = IMG_MODEL.predict(x, verbose=0)[0]  # Low/Medium/High
+            prob = model.predict(x, verbose=0)[0]  # Low/Medium/High
             conc_score = prob_to_score(prob)
             conc_cat = score_to_label_id(conc_score)
 
