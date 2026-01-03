@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import joblib
 from PIL import Image
-import tensorflow as tf
 
 st.set_page_config(page_title="AI Konsentrasi & Engagement", layout="wide")
 
@@ -60,13 +59,23 @@ def load_engagement_model():
 
 @st.cache_resource
 def load_concentration_model():
+    try:
+        import tensorflow as tf
+    except Exception as e:
+        st.error("TensorFlow tidak terpasang di environment. Tab Konsentrasi dinonaktifkan.")
+        return None
     path = MODELS_DIR / 'concentration_model.keras'
     if not path.exists():
-        raise FileNotFoundError(f'Model konsentrasi tidak ditemukan: {path}')
-    return tf.keras.models.load_model(path, compile=False)
+        st.error(f'Model konsentrasi tidak ditemukan: {path}')
+        return None
+    try:
+        return tf.keras.models.load_model(path, compile=False)
+    except Exception as e:
+        st.error(f"Gagal memuat model konsentrasi: {e}")
+        return None
 
 ENG_MODEL = load_engagement_model()
-IMG_MODEL = load_concentration_model()
+IMG_MODEL = None
 IMG_SIZE = (160, 160)
 CLASS_ORDER = ["Low","Medium","High"]  # pastikan konsisten
 
@@ -136,12 +145,19 @@ with tab2:
         x = np.array(img.resize(IMG_SIZE)) / 255.0
         x = np.expand_dims(x, axis=0)
 
-        prob = IMG_MODEL.predict(x, verbose=0)[0]  # Low/Medium/High
-        conc_score = prob_to_score(prob)
-        conc_cat = score_to_label_id(conc_score)
+        global IMG_MODEL
+        if IMG_MODEL is None:
+            IMG_MODEL = load_concentration_model()
 
-        st.success(f"Konsentrasi: {id_to_indo(conc_cat)} ({conc_score:.0f})")
-        st.write("Probabilitas (Low/Medium/High):", prob.round(3))
+        if IMG_MODEL is None:
+            st.warning("Model konsentrasi tidak tersedia. Pastikan TensorFlow terpasang dan model ada di folder 'models'.")
+        else:
+            prob = IMG_MODEL.predict(x, verbose=0)[0]  # Low/Medium/High
+            conc_score = prob_to_score(prob)
+            conc_cat = score_to_label_id(conc_score)
+
+            st.success(f"Konsentrasi: {id_to_indo(conc_cat)} ({conc_score:.0f})")
+            st.write("Probabilitas (Low/Medium/High):", prob.round(3))
 
 # =========================
 # TAB 3: Gabungan + Rekomendasi
