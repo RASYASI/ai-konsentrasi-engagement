@@ -62,7 +62,7 @@ def load_engagement_model():
         st.warning(f'Model engagement tidak ditemukan: {path}. Menggunakan fallback.')
         return None
     if not JOBLIB_AVAILABLE:
-        st.info("Modul `joblib` tidak terpasang di environment. Menggunakan fallback engagement.")
+        st.info("Modul `joblib` tidak terpasang di environment. Menggunakan prediksi fallback.")
         return None
     try:
         return joblib.load(path)
@@ -195,7 +195,7 @@ with tab2:
     st.subheader("Upload Gambar Wajah Mahasiswa (Dataset #2)")
     tf = get_tensorflow()
     if tf is None:
-        st.info("Mode fallback aktif: TensorFlow tidak tersedia, gunakan prediksi berbasis intensitas gambar.")
+        st.info("TensorFlow tidak tersedia. Menggunakan prediksi fallback berbasis intensitas gambar.")
     up = st.file_uploader("Upload JPG/PNG", type=["jpg","jpeg","png"])
 
     if up is not None:
