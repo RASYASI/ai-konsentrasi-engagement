@@ -71,11 +71,17 @@ def load_engagement_model():
         return None
 
 @st.cache_resource
-def load_concentration_model():
+def get_tensorflow():
     try:
         import tensorflow as tf
-    except Exception as e:
-        st.error("TensorFlow tidak terpasang di environment. Tab Konsentrasi dinonaktifkan.")
+        return tf
+    except Exception:
+        return None
+
+@st.cache_resource
+def load_concentration_model():
+    tf = get_tensorflow()
+    if tf is None:
         return None
     path = MODELS_DIR / 'concentration_model.keras'
     if not path.exists():
@@ -88,6 +94,7 @@ def load_concentration_model():
         return None
 
 ENG_MODEL = load_engagement_model()
+ENG_MODEL_AVAILABLE = ENG_MODEL is not None
 IMG_MODEL = None
 IMG_SIZE = (160, 160)
 CLASS_ORDER = ["Low","Medium","High"]  # pastikan konsisten
@@ -132,7 +139,7 @@ with tab1:
         "region": region
     }])
 
-    if st.button("Prediksi Engagement"):
+    if st.button("Prediksi Engagement", disabled=not ENG_MODEL_AVAILABLE):
         if ENG_MODEL is None:
             st.warning("Model engagement tidak tersedia. Pastikan joblib terpasang dan model ada di folder 'models'.")
         elif not hasattr(ENG_MODEL, "predict_proba"):
@@ -158,7 +165,12 @@ with tab1:
 # =========================
 with tab2:
     st.subheader("Upload Gambar Wajah Mahasiswa (Dataset #2)")
-    up = st.file_uploader("Upload JPG/PNG", type=["jpg","jpeg","png"])
+    tf = get_tensorflow()
+    if tf is None:
+        st.warning("TensorFlow tidak terpasang di environment. Tab Konsentrasi dinonaktifkan.")
+        up = None
+    else:
+        up = st.file_uploader("Upload JPG/PNG", type=["jpg","jpeg","png"])
 
     if up is not None:
         img = Image.open(up).convert("RGB")
