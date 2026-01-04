@@ -59,15 +59,15 @@ def rekomendasi(conc_score, eng_score):
 def load_engagement_model():
     path = MODELS_DIR / 'engagement_model.joblib'
     if not path.exists():
-        st.error(f'Model engagement tidak ditemukan: {path}')
+        st.warning(f'Model engagement tidak ditemukan: {path}. Menggunakan fallback.')
         return None
     if not JOBLIB_AVAILABLE:
-        st.error("Modul `joblib` tidak terpasang di environment. Tab Engagement dinonaktifkan.")
+        st.info("Modul `joblib` tidak terpasang di environment. Menggunakan fallback engagement.")
         return None
     try:
         return joblib.load(path)
     except Exception as e:
-        st.error(f"Gagal memuat model engagement: {e}")
+        st.warning(f"Gagal memuat model engagement: {e}. Menggunakan fallback.")
         return None
 
 @st.cache_resource
@@ -212,11 +212,12 @@ with tab2:
             st.warning("Model konsentrasi tidak tersedia. Menggunakan fallback sederhana.")
         else:
             prob = model.predict(x, verbose=0)[0]  # Low/Medium/High
-            conc_score = prob_to_score(prob)
-            conc_cat = score_to_label_id(conc_score)
 
-            st.success(f"Konsentrasi: {id_to_indo(conc_cat)} ({conc_score:.0f})")
-            st.write("Probabilitas (Low/Medium/High):", prob.round(3))
+        conc_score = prob_to_score(prob)
+        conc_cat = score_to_label_id(conc_score)
+
+        st.success(f"Konsentrasi: {id_to_indo(conc_cat)} ({conc_score:.0f})")
+        st.write("Probabilitas (Low/Medium/High):", prob.round(3))
 
 # =========================
 # TAB 3: Gabungan + Rekomendasi
