@@ -94,7 +94,6 @@ def load_concentration_model():
         return None
 
 ENG_MODEL = load_engagement_model()
-ENG_MODEL_AVAILABLE = ENG_MODEL is not None
 IMG_MODEL = None
 IMG_SIZE = (160, 160)
 CLASS_ORDER = ["Low","Medium","High"]  # pastikan konsisten
@@ -102,6 +101,30 @@ CLASS_ORDER = ["Low","Medium","High"]  # pastikan konsisten
 st.title("Aplikasi Prediksi Konsentrasi & Engagement Mahasiswa (SDG 4)")
 
 tab1, tab2, tab3 = st.tabs(["Prediksi Engagement (Tabular)", "Prediksi Konsentrasi (Gambar)", "Gabungan + Rekomendasi"])
+
+def clamp(value, min_value=0.0, max_value=100.0):
+    return max(min_value, min(max_value, value))
+
+def fallback_engagement_score(row):
+    raw = (
+        row["time_spent_weekly"] * 4
+        + row["quiz_score_avg"] * 0.4
+        + row["video_watched_percent"] * 0.3
+        + row["assignments_submitted"] * 8
+        + row["login_frequency"] * 3
+        + row["session_duration_avg"] * 0.6
+        + row["forum_posts"] * 4
+    )
+    return clamp(raw)
+
+def fallback_concentration_prob(image_rgb):
+    gray = np.mean(image_rgb, axis=2)
+    mean = float(np.mean(gray))
+    if mean < 85:
+        return np.array([0.7, 0.2, 0.1])
+    if mean < 170:
+        return np.array([0.2, 0.6, 0.2])
+    return np.array([0.1, 0.2, 0.7])
 
 # =========================
 # TAB 1: Engagement Tabular
@@ -139,9 +162,14 @@ with tab1:
         "region": region
     }])
 
-    if st.button("Prediksi Engagement", disabled=not ENG_MODEL_AVAILABLE):
+    if ENG_MODEL is None:
+        st.info("Mode fallback aktif: model engagement tidak tersedia di environment ini.")
+    if st.button("Prediksi Engagement"):
         if ENG_MODEL is None:
-            st.warning("Model engagement tidak tersedia. Pastikan joblib terpasang dan model ada di folder 'models'.")
+            eng_score = fallback_engagement_score(X.iloc[0])
+            eng_cat = score_to_label_id(eng_score)
+            st.success(f"Engagement: {id_to_indo(eng_cat)} ({eng_score:.0f})")
+            st.write("Probabilitas (Low/Medium/High):", "fallback")
         elif not hasattr(ENG_MODEL, "predict_proba"):
             st.error("Model engagement tidak mendukung prediksi probabilitas (predict_proba).")
         else:
@@ -167,10 +195,8 @@ with tab2:
     st.subheader("Upload Gambar Wajah Mahasiswa (Dataset #2)")
     tf = get_tensorflow()
     if tf is None:
-        st.warning("TensorFlow tidak terpasang di environment. Tab Konsentrasi dinonaktifkan.")
-        up = None
-    else:
-        up = st.file_uploader("Upload JPG/PNG", type=["jpg","jpeg","png"])
+        st.info("Mode fallback aktif: TensorFlow tidak tersedia, gunakan prediksi berbasis intensitas gambar.")
+    up = st.file_uploader("Upload JPG/PNG", type=["jpg","jpeg","png"])
 
     if up is not None:
         img = Image.open(up).convert("RGB")
@@ -182,7 +208,8 @@ with tab2:
         model = load_concentration_model()
 
         if model is None:
-            st.warning("Model konsentrasi tidak tersedia. Pastikan TensorFlow terpasang dan model ada di folder 'models'.")
+            prob = fallback_concentration_prob(np.array(img))
+            st.warning("Model konsentrasi tidak tersedia. Menggunakan fallback sederhana.")
         else:
             prob = model.predict(x, verbose=0)[0]  # Low/Medium/High
             conc_score = prob_to_score(prob)
