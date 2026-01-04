@@ -39,7 +39,7 @@ def rekomendasi(conc_score, eng_score):
     recs = []
     # konsentrasi
     if conc_score < 50:
-        recs += ["kuis singkat 2–3 menit", "polling/cek pemahaman cepat"]
+        recs += ["kuis singkat 2-3 menit", "polling/cek pemahaman cepat"]
     elif conc_score < 75:
         recs += ["contoh kasus + pertanyaan pemantik"]
     else:
@@ -133,16 +133,25 @@ with tab1:
     }])
 
     if st.button("Prediksi Engagement"):
-        probs = ENG_MODEL.predict_proba(X)[0]
-        # pastikan urutan kelas sesuai Low/Medium/High
-        model_classes = list(ENG_MODEL.classes_)
-        probs_ordered = np.array([probs[model_classes.index(c)] for c in CLASS_ORDER])
+        if ENG_MODEL is None:
+            st.warning("Model engagement tidak tersedia. Pastikan joblib terpasang dan model ada di folder 'models'.")
+        elif not hasattr(ENG_MODEL, "predict_proba"):
+            st.error("Model engagement tidak mendukung prediksi probabilitas (predict_proba).")
+        else:
+            probs = ENG_MODEL.predict_proba(X)[0]
+            # pastikan urutan kelas sesuai Low/Medium/High
+            model_classes = list(getattr(ENG_MODEL, "classes_", CLASS_ORDER))
+            try:
+                probs_ordered = np.array([probs[model_classes.index(c)] for c in CLASS_ORDER])
+            except ValueError:
+                st.error("Urutan kelas pada model engagement tidak sesuai (Low/Medium/High).")
+                st.stop()
 
-        eng_score = prob_to_score(probs_ordered)
-        eng_cat = score_to_label_id(eng_score)
+            eng_score = prob_to_score(probs_ordered)
+            eng_cat = score_to_label_id(eng_score)
 
-        st.success(f"Engagement: {id_to_indo(eng_cat)} ({eng_score:.0f})")
-        st.write("Probabilitas (Low/Medium/High):", probs_ordered.round(3))
+            st.success(f"Engagement: {id_to_indo(eng_cat)} ({eng_score:.0f})")
+            st.write("Probabilitas (Low/Medium/High):", probs_ordered.round(3))
 
 # =========================
 # TAB 2: Konsentrasi Gambar
